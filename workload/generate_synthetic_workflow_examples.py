@@ -412,36 +412,37 @@ if __name__ == "__main__":
         for n in [6, 12, 30, 100]:
             sweep_plan.append(("mostly_parallel", {"n": n}))
 
+        # # highly_dependent: vary chain length
+        for length in [5, 10, 20, 500]:
+            sweep_plan.append(("highly_dependent", {"length": length}))
+
+        # long_workload: vary number and duration
+        for n in [3, 6, 12]:
+            for dur in [60_000, 600_000, 3_600_000, 21_600_000]:
+                sweep_plan.append(("long_workload", {"n": n, "duration_ms": dur}))
+
+        # balanced_tree: vary depth and branching
+        for depth in [2, 3, 4]:
+            for branching in [2, 3, 5]:
+                sweep_plan.append(
+                    ("balanced_tree", {"depth": depth, "branching": branching})
+                )
+
+        # random_dag: vary size and connectivity
+        for n in [10, 15, 25]:
+            for p in [0.05, 0.12, 0.25, 0.5]:
+                for seed in [0, 1]:
+                    sweep_plan.append(
+                        ("random_dag", {"n": n, "edge_prob": p, "seed": seed})
+                    )
+
+        # real world scientific topologies: vary the number of tasks
         for n in [50, 200, 500]:
             sweep_plan.append(("real_world_cybershake", {"n": n}))
             sweep_plan.append(("real_world_genome", {"n": n}))
             sweep_plan.append(("real_world_ligo", {"n": n}))
             sweep_plan.append(("real_world_montage", {"n": n}))
             sweep_plan.append(("real_world_sipht", {"n": n}))
-
-        # # highly_dependent: vary chain length
-        # for length in [5, 10, 20, 500]:
-        #     sweep_plan.append(("highly_dependent", {"length": length}))
-
-        # # long_workload: vary number and duration
-        # for n in [3, 6, 12]:
-        #     for dur in [60_000, 600_000, 3_600_000, 21_600_000]:
-        #         sweep_plan.append(("long_workload", {"n": n, "duration_ms": dur}))
-
-        # # balanced_tree: vary depth and branching
-        # for depth in [2, 3, 4]:
-        #     for branching in [2, 3, 5]:
-        #         sweep_plan.append(
-        #             ("balanced_tree", {"depth": depth, "branching": branching})
-        #         )
-
-        # # random_dag: vary size and connectivity
-        # for n in [10, 15, 25]:
-        #     for p in [0.05, 0.12, 0.25, 0.5]:
-        #         for seed in [0, 1]:
-        #             sweep_plan.append(
-        #                 ("random_dag", {"n": n, "edge_prob": p, "seed": seed})
-        #             )
 
         # run the plan
         for func, params in tqdm(sweep_plan, desc="Generating workflows..."):
