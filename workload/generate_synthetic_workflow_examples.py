@@ -22,6 +22,7 @@ import pandas as pd
 import scipy
 from schemas.workload_schema_v5 import workload_schema
 from tqdm import tqdm
+from utils.real_worl_workflow_utils import get_tasks_from_seed_file
 from utils.visualize_workflow import visualize_dag
 from utils.write_workload_trace import writeTrace
 
@@ -36,6 +37,53 @@ def generate_workflow(kind: str, params: dict):
     """
     start_time = pd.to_datetime("2024-01-01", utc=True)
     start_time_ms = int(start_time.timestamp() * 1000)
+
+    if kind.startswith("real_world"):
+        topology_type = kind.split("_")[-1].upper()
+        n = int(params.get("n", 50))
+
+        # step 1: parse our the XML file:
+        seed_file = (
+            Path(__file__).parent / f"real_world_workflow_seeds/{topology_type}.{n}.dax"
+        )
+        parent_to_children_map, children_to_parent_map, task_properties = (
+            get_tasks_from_seed_file(seed_file)
+        )
+
+        tasks = []
+        fragments = []
+
+        for task_id in sorted(task_properties.keys()):
+            duration = task_properties[task_id]["duration"]
+            tasks.append(
+                [
+                    task_id,
+                    start_time_ms,
+                    duration,
+                    1,
+                    1_000,
+                    500,
+                    children_to_parent_map.get(task_id, []),
+                    parent_to_children_map.get(task_id, []),
+                ]
+            )
+            fragments.append([task_id, duration, 0.5])
+
+        df_tasks = pd.DataFrame(
+            tasks,
+            columns=[
+                "id",
+                "submission_time",
+                "duration",
+                "cpu_count",
+                "cpu_capacity",
+                "mem_capacity",
+                "parents",
+                "children",
+            ],
+        )
+        df_fragments = pd.DataFrame(fragments, columns=["id", "duration", "cpu_usage"])
+        return df_tasks, df_fragments, kind
 
     if kind == "mostly_parallel":
         n = int(params.get("n", 12))
@@ -364,29 +412,36 @@ if __name__ == "__main__":
         for n in [6, 12, 30, 100]:
             sweep_plan.append(("mostly_parallel", {"n": n}))
 
-        # highly_dependent: vary chain length
-        for length in [5, 10, 20, 500]:
-            sweep_plan.append(("highly_dependent", {"length": length}))
+        for n in [50, 200, 500]:
+            sweep_plan.append(("real_world_cybershake", {"n": n}))
+            sweep_plan.append(("real_world_genome", {"n": n}))
+            sweep_plan.append(("real_world_ligo", {"n": n}))
+            sweep_plan.append(("real_world_montage", {"n": n}))
+            sweep_plan.append(("real_world_sipht", {"n": n}))
 
-        # long_workload: vary number and duration
-        for n in [3, 6, 12]:
-            for dur in [60_000, 600_000, 3_600_000, 21_600_000]:
-                sweep_plan.append(("long_workload", {"n": n, "duration_ms": dur}))
+        # # highly_dependent: vary chain length
+        # for length in [5, 10, 20, 500]:
+        #     sweep_plan.append(("highly_dependent", {"length": length}))
 
-        # balanced_tree: vary depth and branching
-        for depth in [2, 3, 4]:
-            for branching in [2, 3, 5]:
-                sweep_plan.append(
-                    ("balanced_tree", {"depth": depth, "branching": branching})
-                )
+        # # long_workload: vary number and duration
+        # for n in [3, 6, 12]:
+        #     for dur in [60_000, 600_000, 3_600_000, 21_600_000]:
+        #         sweep_plan.append(("long_workload", {"n": n, "duration_ms": dur}))
 
-        # random_dag: vary size and connectivity
-        for n in [10, 15, 25]:
-            for p in [0.05, 0.12, 0.25, 0.5]:
-                for seed in [0, 1]:
-                    sweep_plan.append(
-                        ("random_dag", {"n": n, "edge_prob": p, "seed": seed})
-                    )
+        # # balanced_tree: vary depth and branching
+        # for depth in [2, 3, 4]:
+        #     for branching in [2, 3, 5]:
+        #         sweep_plan.append(
+        #             ("balanced_tree", {"depth": depth, "branching": branching})
+        #         )
+
+        # # random_dag: vary size and connectivity
+        # for n in [10, 15, 25]:
+        #     for p in [0.05, 0.12, 0.25, 0.5]:
+        #         for seed in [0, 1]:
+        #             sweep_plan.append(
+        #                 ("random_dag", {"n": n, "edge_prob": p, "seed": seed})
+        #             )
 
         # run the plan
         for func, params in tqdm(sweep_plan, desc="Generating workflows..."):
