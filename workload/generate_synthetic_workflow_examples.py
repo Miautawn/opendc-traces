@@ -35,7 +35,7 @@ def generate_workflow(kind: str, params: dict):
 
     Returns (df_tasks, df_fragments, name)
     """
-    start_time = pd.to_datetime("2024-01-01", utc=True)
+    start_time = pd.to_datetime("2022-01-01", utc=True)
     start_time_ms = int(start_time.timestamp() * 1000)
 
     if kind.startswith("real_world"):
